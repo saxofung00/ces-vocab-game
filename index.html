@@ -1,0 +1,1204 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>CES Vocabulary Defense - Arcade Edition</title>
+  <style>
+    :root {
+      --bg: #090d16;
+      --panel: rgba(15, 23, 42, 0.95);
+      --primary: #38bdf8;
+      --primary-glow: rgba(56, 189, 248, 0.45);
+      --accent: #f43f5e;
+      --gold: #fbbf24;
+      --purple: #c084fc;
+      --green: #4ade80;
+      --text: #f8fafc;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; }
+    body, html { width: 100%; height: 100%; overflow: hidden; background: var(--bg); color: var(--text); }
+    #canvas { display: block; width: 100vw; height: 100vh; position: absolute; top: 0; left: 0; z-index: 1; }
+
+    /* Top Navigation HUD */
+    .hud {
+      position: absolute; top: 0; left: 0; width: 100%; min-height: 58px;
+      padding: 8px 16px; display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 8px;
+      background: linear-gradient(180deg, rgba(9, 13, 22, 0.94) 0%, rgba(9, 13, 22, 0.6) 80%, transparent 100%);
+      z-index: 15;
+    }
+    .hud-left, .hud-right { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+    .hud-stat { display: flex; align-items: center; gap: 6px; font-weight: 800; font-size: 0.95rem; text-shadow: 0 2px 4px rgba(0,0,0,0.8); }
+    .hud-stat span { color: var(--primary); }
+    .player-badge {
+      background: rgba(30, 41, 59, 0.9); border: 1px solid #475569; padding: 4px 10px;
+      border-radius: 999px; font-size: 0.8rem; font-weight: 700; color: #e2e8f0;
+    }
+    .mode-badge {
+      padding: 3px 9px; border-radius: 999px; font-size: 0.72rem; font-weight: 800; letter-spacing: 0.5px; text-transform: uppercase;
+    }
+    .badge-normal { background: rgba(56, 189, 248, 0.2); border: 1px solid #38bdf8; color: #38bdf8; }
+    .badge-hard { background: rgba(251, 191, 36, 0.2); border: 1px solid #fbbf24; color: #fbbf24; }
+    .badge-fever { background: rgba(244, 63, 94, 0.25); border: 1px solid #f43f5e; color: #fda4af; animation: pulse 1s infinite; }
+    .hearts { color: var(--accent); font-size: 1.1rem; letter-spacing: 2px; }
+
+    .hud-btn {
+      background: rgba(30, 41, 59, 0.92); border: 1px solid #64748b; color: #f8fafc;
+      padding: 6px 12px; border-radius: 8px; font-size: 0.8rem; font-weight: 800;
+      cursor: pointer; transition: all 0.15s; display: inline-flex; align-items: center; gap: 5px;
+    }
+    .hud-btn:hover { border-color: var(--primary); color: var(--primary); transform: translateY(-1px); }
+    .hud-btn-restart { border-color: rgba(251, 191, 36, 0.6); color: var(--gold); }
+    .hud-btn-restart:hover { background: rgba(251, 191, 36, 0.15); border-color: var(--gold); }
+
+    @keyframes pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.05); } }
+
+    /* Modals */
+    .modal-overlay {
+      position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(9, 13, 22, 0.88); backdrop-filter: blur(8px);
+      display: flex; justify-content: center; align-items: center; z-index: 30; padding: 12px;
+    }
+    .modal-card {
+      background: var(--panel); border: 2px solid rgba(56, 189, 248, 0.35);
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.75), 0 0 30px var(--primary-glow);
+      border-radius: 20px; width: 100%; max-width: 580px; padding: 20px 22px;
+      text-align: center; max-height: 94vh; overflow-y: auto;
+    }
+
+    /* Header Bar inside Start Modal */
+    .start-header {
+      display: flex; justify-content: space-between; align-items: center; gap: 10px;
+      border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 12px; margin-bottom: 12px;
+      text-align: left;
+    }
+    .btn-play-hero {
+      background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
+      border: 2px solid #86efac; color: #fff; padding: 10px 18px; border-radius: 12px;
+      font-size: 0.95rem; font-weight: 900; cursor: pointer; white-space: nowrap;
+      box-shadow: 0 0 18px rgba(34, 197, 94, 0.5); transition: all 0.2s;
+    }
+    .btn-play-hero:hover { transform: scale(1.04); box-shadow: 0 0 26px rgba(74, 222, 128, 0.75); }
+
+    /* Student Identity Box */
+    .student-box {
+      background: rgba(30, 41, 59, 0.75); border: 1.5px solid rgba(56, 189, 248, 0.4);
+      border-radius: 12px; padding: 12px; margin-bottom: 12px; text-align: left;
+    }
+    .student-box-title {
+      font-size: 0.76rem; font-weight: 800; color: var(--primary); text-transform: uppercase;
+      letter-spacing: 0.5px; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center;
+    }
+    .student-grid { display: grid; grid-template-columns: 1fr 1fr 2fr; gap: 8px; }
+    .student-field label { display: block; font-size: 0.72rem; color: #94a3b8; font-weight: 700; margin-bottom: 3px; }
+    .student-field input {
+      width: 100%; padding: 8px 10px; border-radius: 8px; border: 1px solid #475569;
+      background: #0f172a; color: #fff; font-size: 0.9rem; font-weight: 700; outline: none;
+    }
+    .student-field input:focus { border-color: var(--primary); box-shadow: 0 0 8px var(--primary-glow); }
+    .input-error { border-color: var(--accent) !important; box-shadow: 0 0 8px rgba(244, 63, 94, 0.5) !important; }
+
+    /* Buttons */
+    .btn {
+      background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%);
+      border: 1px solid #38bdf8; color: #fff; padding: 11px 16px; border-radius: 11px;
+      font-size: 0.92rem; font-weight: 700; cursor: pointer; transition: all 0.2s;
+      box-shadow: 0 4px 12px rgba(2, 132, 199, 0.35); display: inline-flex;
+      align-items: center; justify-content: center; gap: 6px;
+    }
+    .btn:hover { transform: translateY(-2px); box-shadow: 0 6px 16px rgba(56, 189, 248, 0.55); }
+    .btn-gold { background: linear-gradient(135deg, #d97706 0%, #b45309 100%); border-color: #fbbf24; }
+    .btn-secondary { background: rgba(51, 65, 85, 0.85); border-color: #64748b; }
+
+    /* Difficulty Mode Selector */
+    .mode-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 8px 0 12px 0; }
+    .mode-card {
+      background: rgba(30, 41, 59, 0.8); border: 2px solid #334155; border-radius: 12px;
+      padding: 9px 6px; cursor: pointer; transition: all 0.2s; text-align: center;
+    }
+    .mode-card:hover { border-color: #64748b; }
+    .mode-card.active-normal { border-color: #38bdf8; background: rgba(56, 189, 248, 0.15); box-shadow: 0 0 12px rgba(56, 189, 248, 0.25); }
+    .mode-card.active-hard { border-color: #fbbf24; background: rgba(251, 191, 36, 0.15); box-shadow: 0 0 12px rgba(251, 191, 36, 0.25); }
+    .mode-card.active-fever { border-color: #f43f5e; background: rgba(244, 63, 94, 0.18); box-shadow: 0 0 14px rgba(244, 63, 94, 0.3); }
+    .mode-title { font-weight: 800; font-size: 0.88rem; margin-bottom: 3px; }
+    .mode-desc { font-size: 0.7rem; color: #94a3b8; line-height: 1.25; }
+
+    /* Selects & Inputs */
+    .select-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 10px; text-align: left; }
+    label.field-label { display: block; font-size: 0.74rem; color: #94a3b8; margin-bottom: 4px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.4px; }
+    select {
+      width: 100%; padding: 9px 10px; border-radius: 9px; border: 1px solid #475569;
+      background: #1e293b; color: #fff; font-size: 0.85rem; outline: none;
+    }
+
+    /* Tables */
+    .data-table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 0.82rem; }
+    .data-table th { background: rgba(51, 65, 85, 0.7); padding: 8px 6px; color: #94a3b8; text-align: left; position: sticky; top: 0; }
+    .data-table td { padding: 8px 6px; border-bottom: 1px solid rgba(255,255,255,0.07); text-align: left; vertical-align: top; }
+    .data-table tr:nth-child(1) td { color: var(--gold); font-weight: 800; }
+
+    /* Virtual Touch Keyboard */
+    .virtual-kb {
+      position: absolute; bottom: 8px; left: 50%; transform: translateX(-50%);
+      z-index: 20; display: none; flex-direction: column; gap: 4px; width: 98%; max-width: 680px;
+    }
+    .kb-row { display: flex; justify-content: center; gap: 4px; }
+    .kb-key {
+      background: rgba(30, 41, 59, 0.9); border: 1px solid #475569; color: #f8fafc;
+      border-radius: 6px; padding: 9px 0; flex: 1; text-align: center; font-weight: 700;
+      font-size: 0.9rem; cursor: pointer;
+    }
+    .kb-key:active { background: var(--primary); color: #000; }
+    .kb-key.hint-key { border-color: var(--gold); background: rgba(251, 191, 36, 0.25); color: var(--gold); }
+    @media (max-width: 820px) { .virtual-kb { display: flex; } }
+    @media (max-width: 500px) { .student-grid { grid-template-columns: 1fr 1fr; } .student-grid .student-field:last-child { grid-column: span 2; } }
+
+    .hidden { display: none !important; }
+  </style>
+</head>
+<body>
+
+  <canvas id="canvas"></canvas>
+
+  <!-- Top HUD -->
+  <div class="hud">
+    <div class="hud-left">
+      <div class="player-badge" id="hud-player">👤 Guest</div>
+      <div class="hud-stat">SCORE: <span id="hud-score">0</span></div>
+      <div class="hud-stat">COMBO: <span id="hud-combo">x0</span></div>
+      <div id="hud-mode-badge" class="mode-badge badge-normal">NORMAL</div>
+    </div>
+    <div class="hud-right">
+      <div class="hud-stat hearts" id="hud-hearts">❤️❤️❤️❤️❤️</div>
+      <button class="hud-btn hud-btn-restart" onclick="restartGame()" title="Restart Current Round">🔄 RESTART</button>
+      <button class="hud-btn" onclick="returnToMenu()" title="Back to Main Menu">🏠 MENU</button>
+      <button class="hud-btn" onclick="toggleAudio()" id="btn-audio">🔊</button>
+    </div>
+  </div>
+
+  <!-- Virtual Keyboard for Tablets / Mobile -->
+  <div class="virtual-kb" id="virtual-kb"></div>
+
+  <!-- Start Menu Modal -->
+  <div id="modal-start" class="modal-overlay">
+    <div class="modal-card">
+      <div class="start-header">
+        <div>
+          <h1 style="font-size: 1.45rem; color: var(--primary); font-weight: 900;">🛡️ CES VOCABULARY DEFENSE</h1>
+          <p style="color: #94a3b8; font-size: 0.78rem;">Junior Secondary Citizenship, Economics &amp; Society (77 Concepts)</p>
+        </div>
+        <button class="btn-play-hero" onclick="startGame()">🚀 PLAY NOW</button>
+      </div>
+
+      <!-- Mandatory Student Identification -->
+      <div class="student-box">
+        <div class="student-box-title">
+          <span>Step 1: Student Registration (Required)</span>
+          <span id="cloud-indicator" style="color: #4ade80; font-size: 0.72rem;">✅ Cloud Connected</span>
+        </div>
+        <div class="student-grid">
+          <div class="student-field">
+            <label for="stu-class">Class *</label>
+            <input type="text" id="stu-class" placeholder="e.g. 2A" maxlength="5">
+          </div>
+          <div class="student-field">
+            <label for="stu-no">Class No. *</label>
+            <input type="text" id="stu-no" placeholder="e.g. 05" maxlength="3">
+          </div>
+          <div class="student-field">
+            <label for="stu-name">English Name *</label>
+            <input type="text" id="stu-name" placeholder="e.g. Chris Chan" maxlength="25">
+          </div>
+        </div>
+        <div id="reg-error-msg" style="color: var(--accent); font-size: 0.75rem; font-weight: 700; margin-top: 6px;" class="hidden">
+          ⚠️ Please enter your Class, Class No., and English Name before starting!
+        </div>
+      </div>
+
+      <!-- Module & Chapter Filter -->
+      <div class="select-row">
+        <div>
+          <label class="field-label">Step 2: Select Module</label>
+          <select id="select-module" onchange="updateSubtopicOptions()">
+            <option value="Module 1">Module 1: Youth Challenges (37)</option>
+            <option value="Module 2">Module 2: Governance of HK (40)</option>
+            <option value="Mixed">All Modules Combined (77)</option>
+          </select>
+        </div>
+        <div>
+          <label class="field-label">Chapter / Sub-Topic</label>
+          <select id="select-subtopic">
+            <option value="ALL">All Chapters in Module</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Difficulty Selection -->
+      <div style="text-align: left;">
+        <label class="field-label">Step 3: Select Difficulty Mode</label>
+        <div class="mode-grid">
+          <div class="mode-card active-normal" id="card-normal" onclick="selectMode('Normal')">
+            <div class="mode-title" style="color: #38bdf8;">📘 Normal</div>
+            <div class="mode-desc">English + Chinese<br>Gentle Speed (1x)</div>
+          </div>
+          <div class="mode-card" id="card-hard" onclick="selectMode('Hard')">
+            <div class="mode-title" style="color: #fbbf24;">📙 Hard</div>
+            <div class="mode-desc">Chinese Clue Only<br>Steady Speed (1.5x)</div>
+          </div>
+          <div class="mode-card" id="card-fever" onclick="selectMode('Fever')">
+            <div class="mode-title" style="color: #f43f5e;">🔥 Fever Mode</div>
+            <div class="mode-desc">Chinese Clue Only<br>Fast Speed (3x Pts)</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Action Buttons -->
+      <div style="display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 8px; margin-top: 6px;">
+        <button class="btn" style="font-size: 1rem; padding: 13px;" onclick="startGame()">🚀 START GAME</button>
+        <button class="btn btn-secondary" onclick="showGlossary()">📖 77 WORDS</button>
+        <button class="btn btn-gold" onclick="showLeaderboard()">🏆 RANKS</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Game Over & Auto Leaderboard Modal -->
+  <div id="modal-gameover" class="modal-overlay hidden">
+    <div class="modal-card">
+      <h2 style="color: var(--accent); font-size: 1.5rem; margin-bottom: 4px;">BASE BREACHED!</h2>
+      <p style="color: #94a3b8; font-size: 0.85rem; margin-bottom: 12px;" id="gameover-player-label">Session Summary</p>
+
+      <div style="background: rgba(0,0,0,0.35); border-radius: 14px; padding: 12px; margin-bottom: 14px; display: flex; justify-content: space-around;">
+        <div>
+          <div style="font-size: 0.72rem; color: #94a3b8; text-transform: uppercase;">Final Score</div>
+          <div style="font-size: 1.7rem; font-weight: 900; color: var(--gold);" id="final-score">0</div>
+        </div>
+        <div>
+          <div style="font-size: 0.72rem; color: #94a3b8; text-transform: uppercase;">Max Combo</div>
+          <div style="font-size: 1.7rem; font-weight: 900; color: var(--primary);" id="final-combo">0</div>
+        </div>
+        <div>
+          <div style="font-size: 0.72rem; color: #94a3b8; text-transform: uppercase;">Words Cleared</div>
+          <div style="font-size: 1.7rem; font-weight: 900; color: #4ade80;" id="final-words">0</div>
+        </div>
+      </div>
+
+      <div id="submit-status" style="margin: 10px 0; font-size: 0.88rem; font-weight: 700; padding: 8px; border-radius: 8px; background: rgba(30, 41, 59, 0.7);">
+        ⏳ Uploading score to school leaderboard...
+      </div>
+
+      <div style="margin-top: 12px; display: flex; gap: 8px;">
+        <button class="btn" style="flex: 1;" onclick="restartGame()">🔄 Play Again</button>
+        <button class="btn btn-gold" style="flex: 1;" onclick="showLeaderboard()">🏆 Top 30 Ranks</button>
+        <button class="btn btn-secondary" onclick="returnToMenu()">🏠 Menu</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Leaderboard Modal -->
+  <div id="modal-leaderboard" class="modal-overlay hidden">
+    <div class="modal-card" style="max-width: 620px;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+        <h2 style="color: var(--gold); font-size: 1.3rem;">🏆 School Top 30 Leaderboard</h2>
+        <select id="lb-filter" onchange="renderLeaderboardRows()" style="width: auto; padding: 5px 10px; font-size: 0.8rem;">
+          <option value="ALL">All Modules</option>
+          <option value="Module 1">Module 1 Only</option>
+          <option value="Module 2">Module 2 Only</option>
+        </select>
+      </div>
+      <div id="leaderboard-loading" style="color: #94a3b8; padding: 24px;">Fetching live school rankings...</div>
+      <div style="max-height: 55vh; overflow-y: auto;">
+        <table class="data-table hidden" id="leaderboard-table">
+          <thead>
+            <tr>
+              <th>Rank</th>
+              <th>Class (No.)</th>
+              <th>Name</th>
+              <th>Mode</th>
+              <th>Score</th>
+            </tr>
+          </thead>
+          <tbody id="leaderboard-tbody"></tbody>
+        </table>
+      </div>
+      <button class="btn btn-secondary" style="width: 100%; margin-top: 14px;" onclick="closeModal('modal-leaderboard')">Close</button>
+    </div>
+  </div>
+
+  <!-- 77 Concepts Glossary Modal -->
+  <div id="modal-glossary" class="modal-overlay hidden">
+    <div class="modal-card" style="max-width: 660px;">
+      <h2 style="color: var(--primary); margin-bottom: 8px;">📖 CES Curriculum Concept Bank (77 Terms)</h2>
+      <div style="display: flex; gap: 8px; margin-bottom: 10px;">
+        <select id="glossary-filter" onchange="renderGlossary()" style="flex: 1;">
+          <option value="ALL">All 77 Curriculum Concepts</option>
+          <option value="Module 1">Module 1: Youth Challenges (37)</option>
+          <option value="Module 2">Module 2: Governance of Hong Kong (40)</option>
+        </select>
+        <input type="text" id="glossary-search" oninput="renderGlossary()" placeholder="Search keyword..." style="flex: 1; padding: 8px 12px; border-radius: 8px; border: 1px solid #475569; background: #1e293b; color: #fff;">
+      </div>
+      <div style="max-height: 56vh; overflow-y: auto; border: 1px solid #334155; border-radius: 10px;">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Chapter</th>
+              <th>English Concept</th>
+              <th>Chinese &amp; Explanation</th>
+              <th>Audio</th>
+            </tr>
+          </thead>
+          <tbody id="glossary-tbody"></tbody>
+        </table>
+      </div>
+      <button class="btn btn-secondary" style="width: 100%; margin-top: 14px;" onclick="closeModal('modal-glossary')">Close Glossary</button>
+    </div>
+  </div>
+
+  <script>
+    // =========================================================================
+    // LIVE GOOGLE APPS SCRIPT LEADERBOARD ENDPOINT
+    // =========================================================================
+    const GAS_API_URL = "https://script.google.com/macros/s/AKfycbxI62XF7pmLINbatIj12vj_K8oimqh2Aw42sYyBKcTFHAQReMR4N5Ekv5s5yV4HO2rU/exec";
+
+    // =========================================================================
+    // AUDITED EDB CES CURRICULUM CONCEPT BANK (77 CONCEPTS TOTAL)
+    // =========================================================================
+    const VOCAB_BANK = [
+      // MODULE 1: OVERCOMING YOUTH CHALLENGES (37 Concepts)
+      { mod: "Module 1", sub: "1A: Self-Understanding & Esteem", word: "self-esteem", zh: "自尊", def: "One's overall sense of self-worth and personal value" },
+      { mod: "Module 1", sub: "1A: Self-Understanding & Esteem", word: "self-concept", zh: "自我概念", def: "How a person perceives their own abilities and traits" },
+      { mod: "Module 1", sub: "1A: Self-Understanding & Esteem", word: "self-awareness", zh: "自我認識", def: "Conscious knowledge of one's character and feelings" },
+      { mod: "Module 1", sub: "1A: Self-Understanding & Esteem", word: "adolescence", zh: "青春期", def: "The transitional stage of physical and psychological growth" },
+      { mod: "Module 1", sub: "1A: Self-Understanding & Esteem", word: "identity crisis", zh: "認同危機", def: "Uncertainty about one's role and values during youth" },
+      { mod: "Module 1", sub: "1A: Self-Understanding & Esteem", word: "body image", zh: "身體形象", def: "How a person views and feels about their physical appearance" },
+      { mod: "Module 1", sub: "1A: Self-Understanding & Esteem", word: "self-efficacy", zh: "自我效能感", def: "Belief in one's ability to succeed in specific tasks" },
+      { mod: "Module 1", sub: "1A: Self-Understanding & Esteem", word: "growth mindset", zh: "成長型思維", def: "Believing abilities can be developed through effort" },
+      { mod: "Module 1", sub: "1A: Self-Understanding & Esteem", word: "positive value", zh: "正面價值觀", def: "Constructive moral principles guiding youth behavior" },
+      { mod: "Module 1", sub: "1A: Self-Understanding & Esteem", word: "self-reflection", zh: "自我反思", def: "Evaluating one's actions and thoughts for improvement" },
+
+      { mod: "Module 1", sub: "1B: Emotion, Stress & Resilience", word: "resilience", zh: "抗逆力", def: "Capacity to recover quickly from difficulties and setbacks" },
+      { mod: "Module 1", sub: "1B: Emotion, Stress & Resilience", word: "emotion regulation", zh: "情緒調節", def: "Managing and responding to emotional experiences healthily" },
+      { mod: "Module 1", sub: "1B: Emotion, Stress & Resilience", word: "coping mechanism", zh: "應對機制", def: "Strategies used to manage stress and psychological strain" },
+      { mod: "Module 1", sub: "1B: Emotion, Stress & Resilience", word: "mental well-being", zh: "精神健康", def: "State of emotional and psychological health" },
+      { mod: "Module 1", sub: "1B: Emotion, Stress & Resilience", word: "stress management", zh: "壓力管理", def: "Techniques aimed at controlling a person's level of stress" },
+      { mod: "Module 1", sub: "1B: Emotion, Stress & Resilience", word: "social anxiety", zh: "社交焦慮", def: "Intense fear of being judged in social situations" },
+      { mod: "Module 1", sub: "1B: Emotion, Stress & Resilience", word: "counselling", zh: "輔導諮詢", def: "Professional guidance to resolve personal problems" },
+      { mod: "Module 1", sub: "1B: Emotion, Stress & Resilience", word: "optimism", zh: "樂觀心態", def: "Hopefulness and confidence about the future outcome" },
+      { mod: "Module 1", sub: "1B: Emotion, Stress & Resilience", word: "frustration", zh: "挫折感", def: "Feeling upset when unable to achieve a desired goal" },
+      { mod: "Module 1", sub: "1B: Emotion, Stress & Resilience", word: "help-seeking", zh: "求助行為", def: "Reaching out to trusted adults or professionals for support" },
+
+      { mod: "Module 1", sub: "1C: Self-Discipline & Drug Prevention", word: "etomidate", zh: "依托咪酯", def: "A strictly controlled dangerous drug ('space oil') to reject" },
+      { mod: "Module 1", sub: "1C: Self-Discipline & Drug Prevention", word: "self-discipline", zh: "自律", def: "Controlling behavior to achieve long-term goals" },
+      { mod: "Module 1", sub: "1C: Self-Discipline & Drug Prevention", word: "time management", zh: "時間管理", def: "Planning and exercising control over time spent on tasks" },
+      { mod: "Module 1", sub: "1C: Self-Discipline & Drug Prevention", word: "procrastination", zh: "拖延症", def: "Delaying or postponing important tasks unnecessarily" },
+      { mod: "Module 1", sub: "1C: Self-Discipline & Drug Prevention", word: "life planning", zh: "生涯規劃", def: "Setting academic and career goals for personal development" },
+      { mod: "Module 1", sub: "1C: Self-Discipline & Drug Prevention", word: "addiction", zh: "成癮", def: "Compulsive dependence on a substance or digital habit" },
+      { mod: "Module 1", sub: "1C: Self-Discipline & Drug Prevention", word: "delayed gratification", zh: "延遲享樂", def: "Resisting immediate reward for a greater future benefit" },
+
+      { mod: "Module 1", sub: "1D: Interpersonal & Digital Literacy", word: "peer pressure", zh: "同輩壓力", def: "Influence from peers to conform to group attitudes" },
+      { mod: "Module 1", sub: "1D: Interpersonal & Digital Literacy", word: "conformity", zh: "從眾行為", def: "Matching attitudes and behaviors to group norms" },
+      { mod: "Module 1", sub: "1D: Interpersonal & Digital Literacy", word: "empathy", zh: "同理心", def: "Ability to understand and share the feelings of others" },
+      { mod: "Module 1", sub: "1D: Interpersonal & Digital Literacy", word: "active listening", zh: "積極聆聽", def: "Fully concentrating and responding thoughtfully to a speaker" },
+      { mod: "Module 1", sub: "1D: Interpersonal & Digital Literacy", word: "conflict resolution", zh: "解決衝突", def: "Finding a peaceful solution to a disagreement" },
+      { mod: "Module 1", sub: "1D: Interpersonal & Digital Literacy", word: "personal boundary", zh: "個人界線", def: "Limits set to protect physical and emotional well-being" },
+      { mod: "Module 1", sub: "1D: Interpersonal & Digital Literacy", word: "mutual respect", zh: "互相尊重", def: "Valuing each other's dignity, opinions, and rights" },
+      { mod: "Module 1", sub: "1D: Interpersonal & Digital Literacy", word: "cyberbullying", zh: "網絡欺凌", def: "Bullying or harassment using electronic communication" },
+      { mod: "Module 1", sub: "1D: Interpersonal & Digital Literacy", word: "digital footprint", zh: "數碼足跡", def: "Permanent trail of data left behind when using the internet" },
+      { mod: "Module 1", sub: "1D: Interpersonal & Digital Literacy", word: "media literacy", zh: "媒體素養", def: "Ability to critically evaluate online information" },
+
+      // MODULE 2: GOVERNANCE OF HONG KONG (40 Concepts)
+      { mod: "Module 2", sub: "2A: Constitutional Order & Basic Law", word: "Hong Kong Special Administrative Region", zh: "香港特別行政區", def: "An inalienable part of the PRC established under Article 31" },
+      { mod: "Module 2", sub: "2A: Constitutional Order & Basic Law", word: "People's Republic of China", zh: "中華人民共和國", def: "The sovereign state exercising sovereignty over Hong Kong" },
+      { mod: "Module 2", sub: "2A: Constitutional Order & Basic Law", word: "Treaty of Nanking", zh: "南京條約", def: "The 1842 unequal treaty ceding Hong Kong Island to Britain" },
+      { mod: "Module 2", sub: "2A: Constitutional Order & Basic Law", word: "opium", zh: "鴉片", def: "Addictive narcotic smuggled into China, triggering the Opium Wars" },
+      { mod: "Module 2", sub: "2A: Constitutional Order & Basic Law", word: "constitution", zh: "憲法", def: "Supreme fundamental law of the People's Republic of China" },
+      { mod: "Module 2", sub: "2A: Constitutional Order & Basic Law", word: "basic law", zh: "基本法", def: "Constitutional document of the HKSAR enacted under Article 31" },
+      { mod: "Module 2", sub: "2A: Constitutional Order & Basic Law", word: "one country two systems", zh: "一國兩制", def: "Principle maintaining capitalist system within socialist China" },
+      { mod: "Module 2", sub: "2A: Constitutional Order & Basic Law", word: "sovereignty", zh: "主權", def: "Supreme authority of a state over its territory" },
+      { mod: "Module 2", sub: "2A: Constitutional Order & Basic Law", word: "high degree of autonomy", zh: "高度自治", def: "HKSAR powers in executive, legislative, and judicial affairs" },
+      { mod: "Module 2", sub: "2A: Constitutional Order & Basic Law", word: "national security", zh: "國家安全", def: "Safeguarding sovereignty, territorial integrity, and stability" },
+      { mod: "Module 2", sub: "2A: Constitutional Order & Basic Law", word: "constitutional order", zh: "憲制秩序", def: "Legal framework formed jointly by the Constitution and Basic Law" },
+      { mod: "Module 2", sub: "2A: Constitutional Order & Basic Law", word: "inalienable part", zh: "不可分離的部分", def: "HKSAR's legal status within the People's Republic of China" },
+      { mod: "Module 2", sub: "2A: Constitutional Order & Basic Law", word: "bill of rights", zh: "人權法案", def: "Ordinance protecting fundamental civil and political rights" },
+      { mod: "Module 2", sub: "2A: Constitutional Order & Basic Law", word: "patriots administering", zh: "愛國者治港", def: "Principle ensuring governance power rests with patriots" },
+
+      { mod: "Module 2", sub: "2B: Rule of Law & Judiciary", word: "rule of law", zh: "法治", def: "Principle that all persons and authorities are bound by law" },
+      { mod: "Module 2", sub: "2B: Rule of Law & Judiciary", word: "judicial independence", zh: "司法獨立", def: "Courts exercise judicial power free from any interference" },
+      { mod: "Module 2", sub: "2B: Rule of Law & Judiciary", word: "equality before the law", zh: "法律面前人人平等", def: "Every citizen is subject to the same laws without privilege" },
+      { mod: "Module 2", sub: "2B: Rule of Law & Judiciary", word: "presumption of innocence", zh: "無罪推定", def: "Accused persons are considered innocent until proven guilty" },
+      { mod: "Module 2", sub: "2B: Rule of Law & Judiciary", word: "common law", zh: "普通法", def: "Legal system based on judicial precedents maintained in HKSAR" },
+      { mod: "Module 2", sub: "2B: Rule of Law & Judiciary", word: "judicial review", zh: "司法覆核", def: "Court review of the lawfulness of administrative decisions" },
+      { mod: "Module 2", sub: "2B: Rule of Law & Judiciary", word: "legal aid", zh: "法律援助", def: "Publicly funded legal representation for eligible citizens" },
+      { mod: "Module 2", sub: "2B: Rule of Law & Judiciary", word: "fair trial", zh: "公平審訊", def: "Impartial court hearing conducted according to due process" },
+      { mod: "Module 2", sub: "2B: Rule of Law & Judiciary", word: "law enforcement", zh: "執法", def: "Agencies upholding public order and enforcing legislation" },
+      { mod: "Module 2", sub: "2B: Rule of Law & Judiciary", word: "court of final appeal", zh: "終審法院", def: "The highest appellate court in the Hong Kong SAR" },
+
+      { mod: "Module 2", sub: "2C: Political Structure & Administration", word: "chief executive", zh: "行政長官", def: "Head of the HKSAR and head of the HKSAR Government" },
+      { mod: "Module 2", sub: "2C: Political Structure & Administration", word: "executive-led", zh: "行政主導", def: "Governance system centered on the Chief Executive's leadership" },
+      { mod: "Module 2", sub: "2C: Political Structure & Administration", word: "executive council", zh: "行政會議", def: "Organ assisting the Chief Executive in policy-making" },
+      { mod: "Module 2", sub: "2C: Political Structure & Administration", word: "legislative council", zh: "立法會", def: "Law-making legislature of the Hong Kong SAR" },
+      { mod: "Module 2", sub: "2C: Political Structure & Administration", word: "judiciary", zh: "司法機構", def: "System of courts interpreting and applying the law" },
+      { mod: "Module 2", sub: "2C: Political Structure & Administration", word: "checks and balances", zh: "制衡機制", def: "Mutual regulation between executive and legislative branches" },
+      { mod: "Module 2", sub: "2C: Political Structure & Administration", word: "accountability", zh: "問責制", def: "Principal officials taking responsibility for policy portfolios" },
+      { mod: "Module 2", sub: "2C: Political Structure & Administration", word: "policy address", zh: "施政報告", def: "Annual address outlining the Chief Executive's policy agenda" },
+      { mod: "Module 2", sub: "2C: Political Structure & Administration", word: "government budget", zh: "財政預算案", def: "Annual financial plan detailing public revenue and spending" },
+      { mod: "Module 2", sub: "2C: Political Structure & Administration", word: "civil service", zh: "公務員隊伍", def: "Permanent staff implementing government policies" },
+      { mod: "Module 2", sub: "2C: Political Structure & Administration", word: "ombudsman", zh: "申訴專員公署", def: "Independent watchdog investigating maladministration" },
+      { mod: "Module 2", sub: "2C: Political Structure & Administration", word: "statutory body", zh: "法定機構", def: "Organization established by ordinance for public functions" },
+
+      { mod: "Module 2", sub: "2D: District Governance & Civic Duty", word: "district council", zh: "區議會", def: "District-level advisory and service organization" },
+      { mod: "Module 2", sub: "2D: District Governance & Civic Duty", word: "public consultation", zh: "公眾諮詢", def: "Gathering community views before finalizing policies" },
+      { mod: "Module 2", sub: "2D: District Governance & Civic Duty", word: "civic responsibility", zh: "公民責任", def: "Duties expected of citizens, such as obeying the law" },
+      { mod: "Module 2", sub: "2D: District Governance & Civic Duty", word: "social harmony", zh: "社會和諧", def: "Peaceful coexistence and mutual support within society" }
+    ];
+
+    // =========================================================================
+    // STUDENT IDENTITY & INITIALIZATION
+    // =========================================================================
+    let studentProfile = {
+      className: localStorage.getItem("ces_stu_class") || "",
+      classNo: localStorage.getItem("ces_stu_no") || "",
+      name: localStorage.getItem("ces_stu_name") || ""
+    };
+
+    window.addEventListener("DOMContentLoaded", () => {
+      document.getElementById("stu-class").value = studentProfile.className;
+      document.getElementById("stu-no").value = studentProfile.classNo;
+      document.getElementById("stu-name").value = studentProfile.name;
+      updateSubtopicOptions();
+      updatePlayerBadge();
+    });
+
+    function saveAndValidateStudent() {
+      const clsEl = document.getElementById("stu-class");
+      const noEl = document.getElementById("stu-no");
+      const nameEl = document.getElementById("stu-name");
+      const errEl = document.getElementById("reg-error-msg");
+
+      const cls = clsEl.value.trim().toUpperCase();
+      const no = noEl.value.trim();
+      const name = nameEl.value.trim();
+
+      clsEl.classList.remove("input-error");
+      noEl.classList.remove("input-error");
+      nameEl.classList.remove("input-error");
+
+      let valid = true;
+      if (!cls) { clsEl.classList.add("input-error"); valid = false; }
+      if (!no) { noEl.classList.add("input-error"); valid = false; }
+      if (!name) { nameEl.classList.add("input-error"); valid = false; }
+
+      if (!valid) {
+        errEl.classList.remove("hidden");
+        return false;
+      }
+
+      errEl.classList.add("hidden");
+      studentProfile = { className: cls, classNo: no, name: name };
+      localStorage.setItem("ces_stu_class", cls);
+      localStorage.setItem("ces_stu_no", no);
+      localStorage.setItem("ces_stu_name", name);
+      updatePlayerBadge();
+      return true;
+    }
+
+    function updatePlayerBadge() {
+      const badge = document.getElementById("hud-player");
+      if (studentProfile.className && studentProfile.name) {
+        badge.innerText = `👤 ${studentProfile.className} (${studentProfile.classNo}) ${studentProfile.name}`;
+      } else {
+        badge.innerText = "👤 Guest";
+      }
+    }
+
+    // =========================================================================
+    // AUDIO SYNTHESIZER & SPEECH
+    // =========================================================================
+    let audioEnabled = true;
+    const AudioCtx = window.AudioContext || window.webkitAudioContext;
+    let actx = null;
+
+    function playTone(freq, type, duration, vol = 0.12) {
+      if (!audioEnabled) return;
+      if (!actx) actx = new AudioCtx();
+      if (actx.state === 'suspended') actx.resume();
+      const osc = actx.createOscillator();
+      const gain = actx.createGain();
+      osc.type = type;
+      osc.frequency.setValueAtTime(freq, actx.currentTime);
+      gain.gain.setValueAtTime(vol, actx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, actx.currentTime + duration);
+      osc.connect(gain);
+      gain.connect(actx.destination);
+      osc.start();
+      osc.stop(actx.currentTime + duration);
+    }
+
+    function toggleAudio() {
+      audioEnabled = !audioEnabled;
+      document.getElementById("btn-audio").innerText = audioEnabled ? "🔊" : "🔇";
+    }
+
+    function speak(text) {
+      if (!audioEnabled || !('speechSynthesis' in window)) return;
+      window.speechSynthesis.cancel();
+      const u = new SpeechSynthesisUtterance(text);
+      u.lang = 'en-US';
+      u.rate = 0.92;
+      window.speechSynthesis.speak(u);
+    }
+
+    // =========================================================================
+    // SUB-TOPIC & MODE CONTROLS
+    // =========================================================================
+    let selectedMode = "Normal";
+    let selectedModule = "Module 1";
+    let selectedSubtopic = "ALL";
+
+    function updateSubtopicOptions() {
+      const mod = document.getElementById("select-module").value;
+      const subSelect = document.getElementById("select-subtopic");
+      subSelect.innerHTML = `<option value="ALL">All Chapters (${mod === 'Mixed' ? '77' : VOCAB_BANK.filter(v => v.mod === mod).length} Words)</option>`;
+      const filtered = mod === "Mixed" ? VOCAB_BANK : VOCAB_BANK.filter(v => v.mod === mod);
+      const subs = [...new Set(filtered.map(v => v.sub))];
+      subs.forEach(s => {
+        const count = filtered.filter(v => v.sub === s).length;
+        const opt = document.createElement("option");
+        opt.value = s;
+        opt.innerText = `${s} (${count})`;
+        subSelect.appendChild(opt);
+      });
+    }
+
+    function selectMode(mode) {
+      selectedMode = mode;
+      document.getElementById("card-normal").className = "mode-card" + (mode === "Normal" ? " active-normal" : "");
+      document.getElementById("card-hard").className = "mode-card" + (mode === "Hard" ? " active-hard" : "");
+      document.getElementById("card-fever").className = "mode-card" + (mode === "Fever" ? " active-fever" : "");
+    }
+
+    // =========================================================================
+    // VIRTUAL TOUCH KEYBOARD
+    // =========================================================================
+    const kbRows = [
+      ["q","w","e","r","t","y","u","i","o","p"],
+      ["a","s","d","f","g","h","j","k","l","'"],
+      ["z","x","c","v","b","n","m","-","SPACE"]
+    ];
+    const kbContainer = document.getElementById("virtual-kb");
+    kbRows.forEach(row => {
+      const div = document.createElement("div");
+      div.className = "kb-row";
+      row.forEach(k => {
+        const btn = document.createElement("div");
+        btn.className = "kb-key";
+        btn.dataset.key = k === "SPACE" ? " " : k;
+        btn.innerText = k === "SPACE" ? "SPACE" : k.toUpperCase();
+        btn.addEventListener("touchstart", (e) => { e.preventDefault(); handleKeyInput(btn.dataset.key); });
+        btn.addEventListener("mousedown", (e) => { e.preventDefault(); handleKeyInput(btn.dataset.key); });
+        div.appendChild(btn);
+      });
+      kbContainer.appendChild(div);
+    });
+
+    // =========================================================================
+    // CANVAS GAME ENGINE
+    // =========================================================================
+    const canvas = document.getElementById("canvas");
+    const ctx = canvas.getContext("2d");
+    let width, height;
+
+    function resize() {
+      width = canvas.width = window.innerWidth;
+      height = canvas.height = window.innerHeight;
+    }
+    window.addEventListener("resize", resize);
+    resize();
+
+    let gameState = "MENU";
+    let score = 0, combo = 0, maxCombo = 0, wordsCleared = 0, lives = 5;
+    let enemies = [], lasers = [], particles = [], floatingTexts = [];
+    let currentTarget = null;
+    let lastSpawn = 0;
+    let lastKeyTime = performance.now();
+    let shakeTime = 0;
+
+    function startGame() {
+      if (!saveAndValidateStudent()) return;
+
+      document.getElementById("modal-start").classList.add("hidden");
+      document.getElementById("modal-gameover").classList.add("hidden");
+      document.getElementById("modal-leaderboard").classList.add("hidden");
+
+      selectedModule = document.getElementById("select-module").value;
+      selectedSubtopic = document.getElementById("select-subtopic").value;
+
+      const badge = document.getElementById("hud-mode-badge");
+      if (selectedMode === "Normal") {
+        badge.innerText = "NORMAL (1x)";
+        badge.className = "mode-badge badge-normal";
+      } else if (selectedMode === "Hard") {
+        badge.innerText = "HARD: CN CLUE (1.5x)";
+        badge.className = "mode-badge badge-hard";
+      } else {
+        badge.innerText = "🔥 FEVER: CN CLUE (3x)";
+        badge.className = "mode-badge badge-fever";
+      }
+
+      score = 0; combo = 0; maxCombo = 0; wordsCleared = 0; lives = 5;
+      enemies = []; lasers = []; particles = []; floatingTexts = [];
+      currentTarget = null;
+      updateHud();
+
+      gameState = "PLAY";
+      lastSpawn = performance.now() - 2500;
+      lastKeyTime = performance.now();
+      playTone(523.25, "sine", 0.15);
+    }
+
+    function restartGame() {
+      startGame();
+    }
+
+    function returnToMenu() {
+      gameState = "MENU";
+      enemies = []; lasers = []; particles = []; currentTarget = null;
+      document.getElementById("modal-gameover").classList.add("hidden");
+      document.getElementById("modal-leaderboard").classList.add("hidden");
+      document.getElementById("modal-glossary").classList.add("hidden");
+      document.getElementById("modal-start").classList.remove("hidden");
+    }
+
+    function updateHud() {
+      document.getElementById("hud-score").innerText = score;
+      document.getElementById("hud-combo").innerText = "x" + combo;
+      document.getElementById("hud-hearts").innerText = "❤️".repeat(Math.max(0, lives));
+    }
+
+    function getActivePool() {
+      let pool = VOCAB_BANK;
+      if (selectedModule !== "Mixed") {
+        pool = pool.filter(v => v.mod === selectedModule);
+      }
+      if (selectedSubtopic !== "ALL") {
+        pool = pool.filter(v => v.sub === selectedSubtopic);
+      }
+      return pool.length > 0 ? pool : VOCAB_BANK;
+    }
+
+    function spawnEnemy() {
+      const pool = getActivePool();
+      const activeWords = enemies.map(e => e.word.toLowerCase());
+      const candidates = pool.filter(item => !activeWords.includes(item.word.toLowerCase()));
+      const pickPool = candidates.length > 0 ? candidates : pool;
+      const item = pickPool[Math.floor(Math.random() * pickPool.length)];
+
+      // Deliberate pedagogical speeds for vocabulary recall
+      let baseSpeed = 0.25;
+      if (selectedMode === "Hard") baseSpeed = 0.30;
+      if (selectedMode === "Fever") baseSpeed = 0.56;
+
+      // Slightly slower speed for long multi-word concepts
+      const lengthFactor = item.word.length > 20 ? 0.72 : (item.word.length > 14 ? 0.85 : 1.0);
+      const speed = (baseSpeed + Math.random() * 0.06) * lengthFactor;
+
+      const palette = selectedMode === "Fever"
+        ? ["#f43f5e", "#ec4899", "#fb7185", "#e879f9"]
+        : ["#38bdf8", "#a855f7", "#34d399", "#fbbf24"];
+
+      const margin = Math.min(200, width * 0.2);
+      enemies.push({
+        word: item.word.toLowerCase(),
+        displayWord: item.word,
+        zh: item.zh,
+        def: item.def,
+        typed: "",
+        x: Math.random() * (width - margin * 2) + margin,
+        y: -45,
+        speed: speed,
+        radius: 26,
+        squash: 1,
+        color: palette[Math.floor(Math.random() * palette.length)]
+      });
+    }
+
+    window.addEventListener("keydown", (e) => {
+      if (gameState !== "PLAY") return;
+      if (e.ctrlKey || e.metaKey || e.altKey) return;
+      const key = e.key.toLowerCase();
+      if (/^[a-z '-]$/.test(key)) {
+        e.preventDefault();
+        handleKeyInput(key);
+      }
+    });
+
+    function handleKeyInput(key) {
+      if (gameState !== "PLAY") return;
+      lastKeyTime = performance.now();
+
+      if (!currentTarget) {
+        const matches = enemies.filter(en => en.word[en.typed.length] === key);
+        if (matches.length > 0) {
+          matches.sort((a, b) => b.y - a.y);
+          currentTarget = matches[0];
+          processHit(key);
+        } else {
+          registerMiss();
+        }
+      } else {
+        if (currentTarget.word[currentTarget.typed.length] === key) {
+          processHit(key);
+        } else {
+          registerMiss();
+        }
+      }
+    }
+
+    function registerMiss() {
+      combo = 0;
+      shakeTime = 6;
+      playTone(150, "sawtooth", 0.12, 0.08);
+      updateHud();
+    }
+
+    function processHit(key) {
+      currentTarget.typed += key;
+      currentTarget.squash = 1.28;
+      combo++;
+      if (combo > maxCombo) maxCombo = combo;
+
+      const modeMult = selectedMode === "Fever" ? 3 : (selectedMode === "Hard" ? 1.5 : 1);
+      const comboBonus = combo >= 10 ? 1.5 : 1;
+      const pts = Math.round(10 * modeMult * comboBonus);
+      score += pts;
+      updateHud();
+
+      playTone(440 + Math.min(combo * 18, 400), "triangle", 0.08, 0.09);
+
+      lasers.push({
+        x1: width / 2, y1: height - 35,
+        x2: currentTarget.x, y2: currentTarget.y,
+        color: selectedMode === "Fever" ? "#f43f5e" : "#38bdf8",
+        alpha: 1.0
+      });
+
+      if (currentTarget.typed === currentTarget.word) {
+        wordsCleared++;
+        const clearBonus = Math.round(50 * modeMult);
+        score += clearBonus;
+        updateHud();
+
+        speak(currentTarget.displayWord);
+        playTone(660, "sine", 0.12, 0.12);
+        setTimeout(() => playTone(880, "sine", 0.18, 0.12), 70);
+
+        createExplosion(currentTarget.x, currentTarget.y, currentTarget.color);
+        floatingTexts.push({
+          x: currentTarget.x,
+          y: currentTarget.y - 20,
+          text: `+${clearBonus} (${currentTarget.displayWord})`,
+          alpha: 1.0,
+          color: "#4ade80"
+        });
+
+        enemies = enemies.filter(en => en !== currentTarget);
+        currentTarget = null;
+      }
+    }
+
+    function createExplosion(x, y, color) {
+      for (let i = 0; i < 24; i++) {
+        const angle = (Math.PI * 2 * i) / 24;
+        const speed = 2 + Math.random() * 5;
+        particles.push({
+          x, y,
+          vx: Math.cos(angle) * speed,
+          vy: Math.sin(angle) * speed,
+          alpha: 1,
+          size: 3 + Math.random() * 3,
+          color
+        });
+      }
+    }
+
+    function updateVirtualKeyboardHint(hintChar) {
+      document.querySelectorAll(".kb-key").forEach(btn => {
+        if (hintChar && btn.dataset.key === hintChar) {
+          btn.classList.add("hint-key");
+        } else {
+          btn.classList.remove("hint-key");
+        }
+      });
+    }
+
+    function loop(now) {
+      ctx.save();
+
+      if (shakeTime > 0) {
+        const dx = (Math.random() - 0.5) * 8;
+        const dy = (Math.random() - 0.5) * 8;
+        ctx.translate(dx, dy);
+        shakeTime--;
+      }
+
+      if (selectedMode === "Fever" && gameState === "PLAY") {
+        ctx.fillStyle = "#160918";
+      } else {
+        ctx.fillStyle = "#090d16";
+      }
+      ctx.fillRect(0, 0, width, height);
+
+      // Background Grid
+      ctx.strokeStyle = selectedMode === "Fever" && gameState === "PLAY"
+        ? "rgba(244, 63, 94, 0.1)"
+        : "rgba(56, 189, 248, 0.06)";
+      ctx.lineWidth = 1;
+      for (let gx = 0; gx < width; gx += 48) {
+        ctx.beginPath(); ctx.moveTo(gx, 0); ctx.lineTo(gx, height); ctx.stroke();
+      }
+      for (let gy = 0; gy < height; gy += 48) {
+        ctx.beginPath(); ctx.moveTo(0, gy); ctx.lineTo(width, gy); ctx.stroke();
+      }
+
+      if (gameState === "PLAY") {
+        const spawnInterval = selectedMode === "Fever" ? 2900 : 3800;
+        const maxOnScreen = selectedMode === "Fever" ? 4 : 3;
+
+        if ((now - lastSpawn > spawnInterval && enemies.length < maxOnScreen) || enemies.length === 0) {
+          spawnEnemy();
+          lastSpawn = now;
+        }
+
+        // Defense Line
+        const defenseY = height - 42;
+        ctx.strokeStyle = selectedMode === "Fever" ? "rgba(244, 63, 94, 0.55)" : "rgba(56, 189, 248, 0.45)";
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.moveTo(0, defenseY);
+        ctx.lineTo(width, defenseY);
+        ctx.stroke();
+
+        // Turret Base
+        ctx.fillStyle = selectedMode === "Fever" ? "#f43f5e" : "#38bdf8";
+        ctx.beginPath();
+        ctx.arc(width / 2, defenseY + 12, 18, Math.PI, 0);
+        ctx.fill();
+
+        const isStuck = (now - lastKeyTime) > 3500;
+        let nextHintChar = null;
+
+        for (let i = enemies.length - 1; i >= 0; i--) {
+          const en = enemies[i];
+          en.y += en.speed;
+          en.squash += (1 - en.squash) * 0.15;
+
+          if (en.y >= defenseY - 12) {
+            lives--;
+            shakeTime = 12;
+            playTone(110, "sawtooth", 0.25, 0.15);
+            updateHud();
+            if (en === currentTarget) currentTarget = null;
+            enemies.splice(i, 1);
+            if (lives <= 0) {
+              gameOver();
+              break;
+            }
+            continue;
+          }
+
+          const isTarget = (en === currentTarget);
+          const hideLetters = (selectedMode === "Hard" || selectedMode === "Fever");
+
+          ctx.save();
+          ctx.translate(en.x, en.y);
+
+          if (isTarget) {
+            ctx.strokeStyle = "#fbbf24";
+            ctx.lineWidth = 2.5;
+            ctx.setLineDash([5, 4]);
+            ctx.beginPath();
+            ctx.arc(0, 0, en.radius + 9, 0, Math.PI * 2);
+            ctx.stroke();
+            ctx.setLineDash([]);
+          }
+
+          // Cute Monster Body
+          ctx.scale(en.squash, 2 - en.squash);
+          ctx.fillStyle = en.color;
+          ctx.beginPath();
+          ctx.arc(0, 0, en.radius, 0, Math.PI * 2);
+          ctx.fill();
+
+          // Cute Ears
+          ctx.beginPath();
+          ctx.arc(-16, -20, 7, 0, Math.PI * 2);
+          ctx.arc(16, -20, 7, 0, Math.PI * 2);
+          ctx.fill();
+
+          // Eyes
+          ctx.fillStyle = "#fff";
+          ctx.beginPath();
+          ctx.arc(-8, -3, 5.5, 0, Math.PI * 2);
+          ctx.arc(8, -3, 5.5, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.fillStyle = "#0f172a";
+          ctx.beginPath();
+          ctx.arc(-8, -3, 2.6, 0, Math.PI * 2);
+          ctx.arc(8, -3, 2.6, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.restore();
+
+          // Prompt Box Above Monster
+          ctx.save();
+          ctx.translate(en.x, en.y);
+
+          const charWidth = en.word.length > 22 ? 7.8 : 9.6;
+          const boxWidth = Math.max(195, en.word.length * charWidth + 32, en.def.length * 4.8 + 20);
+          const boxHeight = 60;
+          const boxTop = -en.radius - boxHeight - 10;
+
+          ctx.fillStyle = isTarget ? "rgba(15, 23, 42, 0.96)" : "rgba(15, 23, 42, 0.85)";
+          ctx.strokeStyle = isTarget ? "#fbbf24" : "rgba(148, 163, 184, 0.35)";
+          ctx.lineWidth = isTarget ? 2 : 1;
+          ctx.beginPath();
+          ctx.roundRect(-boxWidth / 2, boxTop, boxWidth, boxHeight, 9);
+          ctx.fill();
+          ctx.stroke();
+
+          // Chinese Meaning
+          ctx.textAlign = "center";
+          ctx.font = "bold 14px 'Microsoft JhengHei', sans-serif";
+          ctx.fillStyle = "#fef08a";
+          ctx.fillText(en.zh, 0, boxTop + 18);
+
+          // English Definition
+          ctx.font = "10.5px sans-serif";
+          ctx.fillStyle = "#94a3b8";
+          ctx.fillText(en.def, 0, boxTop + 33);
+
+          // English Letters or Masked Slots
+          ctx.font = `bold ${en.word.length > 22 ? '13px' : '15.5px'} monospace`;
+          const totalW = en.word.length * charWidth;
+          const startX = -totalW / 2;
+
+          for (let j = 0; j < en.word.length; j++) {
+            const actualChar = en.word[j];
+            let displayChar = actualChar;
+
+            if (j < en.typed.length) {
+              ctx.fillStyle = "#4ade80";
+            } else if (hideLetters) {
+              displayChar = actualChar === " " ? " " : (actualChar === "-" ? "-" : (actualChar === "'" ? "'" : "_"));
+              ctx.fillStyle = (isTarget && j === en.typed.length) ? "#fbbf24" : "#64748b";
+            } else {
+              ctx.fillStyle = (isTarget && j === en.typed.length) ? "#fbbf24" : "#f8fafc";
+            }
+
+            if (displayChar === " " && j >= en.typed.length) {
+              ctx.fillStyle = "rgba(148, 163, 184, 0.35)";
+              ctx.fillText("␣", startX + j * charWidth + charWidth / 2, boxTop + 52);
+            } else {
+              ctx.fillText(displayChar, startX + j * charWidth + charWidth / 2, boxTop + 52);
+            }
+          }
+
+          // 3.5-Second Dynamic Scaffolding Hint
+          if (isStuck && (isTarget || (!currentTarget && i === 0))) {
+            const nextChar = en.word[en.typed.length];
+            nextHintChar = nextChar;
+            const label = nextChar === " " ? "SPACE" : nextChar.toUpperCase();
+            ctx.fillStyle = "#fbbf24";
+            ctx.font = "bold 11.5px sans-serif";
+            ctx.fillText(`💡 Next Key: [ ${label} ]`, 0, boxTop - 6);
+          }
+
+          ctx.restore();
+        }
+
+        updateVirtualKeyboardHint(nextHintChar);
+
+        // Lasers
+        for (let i = lasers.length - 1; i >= 0; i--) {
+          const l = lasers[i];
+          ctx.strokeStyle = l.color;
+          ctx.globalAlpha = l.alpha;
+          ctx.lineWidth = 4;
+          ctx.beginPath();
+          ctx.moveTo(l.x1, l.y1);
+          ctx.lineTo(l.x2, l.y2);
+          ctx.stroke();
+          ctx.globalAlpha = 1;
+          l.alpha -= 0.12;
+          if (l.alpha <= 0) lasers.splice(i, 1);
+        }
+
+        // Particles
+        for (let i = particles.length - 1; i >= 0; i--) {
+          const p = particles[i];
+          p.x += p.vx; p.y += p.vy;
+          p.alpha -= 0.03;
+          ctx.fillStyle = p.color;
+          ctx.globalAlpha = Math.max(0, p.alpha);
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.globalAlpha = 1;
+          if (p.alpha <= 0) particles.splice(i, 1);
+        }
+
+        // Floating Texts
+        for (let i = floatingTexts.length - 1; i >= 0; i--) {
+          const ft = floatingTexts[i];
+          ft.y -= 0.8;
+          ft.alpha -= 0.018;
+          ctx.globalAlpha = Math.max(0, ft.alpha);
+          ctx.fillStyle = ft.color;
+          ctx.font = "bold 13px sans-serif";
+          ctx.textAlign = "center";
+          ctx.fillText(ft.text, ft.x, ft.y);
+          ctx.globalAlpha = 1;
+          if (ft.alpha <= 0) floatingTexts.splice(i, 1);
+        }
+      }
+
+      ctx.restore();
+      requestAnimationFrame(loop);
+    }
+    requestAnimationFrame(loop);
+
+    // =========================================================================
+    // GAME OVER & AUTOMATIC LEADERBOARD UPLOAD
+    // =========================================================================
+    function gameOver() {
+      gameState = "GAMEOVER";
+      document.getElementById("final-score").innerText = score;
+      document.getElementById("final-combo").innerText = maxCombo;
+      document.getElementById("final-words").innerText = wordsCleared;
+      document.getElementById("gameover-player-label").innerText =
+        `Player: ${studentProfile.className} (${studentProfile.classNo}) ${studentProfile.name} | Mode: ${selectedMode}`;
+      document.getElementById("modal-gameover").classList.remove("hidden");
+
+      autoSubmitScore();
+    }
+
+    function autoSubmitScore() {
+      const statusEl = document.getElementById("submit-status");
+      statusEl.style.color = "#38bdf8";
+      statusEl.innerText = "⏳ Automatically uploading score to school leaderboard...";
+
+      const payload = {
+        className: studentProfile.className,
+        classNo: studentProfile.classNo,
+        studentName: studentProfile.name,
+        score: score,
+        maxCombo: maxCombo,
+        module: selectedModule,
+        mode: selectedMode
+      };
+
+      fetch(GAS_API_URL, {
+        method: "POST",
+        mode: "no-cors",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      })
+      .then(() => {
+        statusEl.style.color = "#4ade80";
+        statusEl.innerText = `✅ Score (${score} pts) automatically recorded for ${studentProfile.className} (${studentProfile.classNo}) ${studentProfile.name}!`;
+      })
+      .catch(() => {
+        statusEl.style.color = "#f43f5e";
+        statusEl.innerText = "❌ Network error. Please check Wi-Fi connection.";
+      });
+    }
+
+    // =========================================================================
+    // LEADERBOARD & GLOSSARY MODALS
+    // =========================================================================
+    let cachedLeaderboard = [];
+
+    function showLeaderboard() {
+      document.getElementById("modal-leaderboard").classList.remove("hidden");
+      const loading = document.getElementById("leaderboard-loading");
+      const table = document.getElementById("leaderboard-table");
+
+      loading.classList.remove("hidden");
+      loading.innerText = "Fetching live school rankings...";
+      table.classList.add("hidden");
+
+      fetch(GAS_API_URL)
+        .then(res => res.json())
+        .then(data => {
+          cachedLeaderboard = Array.isArray(data) ? data : [];
+          loading.classList.add("hidden");
+          table.classList.remove("hidden");
+          renderLeaderboardRows();
+        })
+        .catch(() => {
+          loading.innerText = "❌ Unable to connect to Google Sheet API. Please verify deployment permissions.";
+        });
+    }
+
+    function renderLeaderboardRows() {
+      const filter = document.getElementById("lb-filter").value;
+      const tbody = document.getElementById("leaderboard-tbody");
+      tbody.innerHTML = "";
+
+      const rows = filter === "ALL"
+        ? cachedLeaderboard
+        : cachedLeaderboard.filter(r => r.module === filter);
+
+      if (rows.length === 0) {
+        tbody.innerHTML = "<tr><td colspan='5' style='text-align:center; padding:16px;'>No records found for this category yet!</td></tr>";
+        return;
+      }
+
+      rows.forEach((row, idx) => {
+        const tr = document.createElement("tr");
+        const rank = idx === 0 ? "🥇 1" : idx === 1 ? "🥈 2" : idx === 2 ? "🥉 3" : (idx + 1);
+        const classDisplay = row.classNo ? `${row.className} (${row.classNo})` : (row.className || "-");
+        tr.innerHTML = `
+          <td>${rank}</td>
+          <td>${classDisplay}</td>
+          <td>${row.name || "-"}</td>
+          <td><span style="font-size:0.75rem; color:#94a3b8;">${row.mode || "Normal"}</span></td>
+          <td style="color:#38bdf8; font-weight:800;">${row.score}</td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    function showGlossary() {
+      document.getElementById("modal-glossary").classList.remove("hidden");
+      renderGlossary();
+    }
+
+    function renderGlossary() {
+      const filter = document.getElementById("glossary-filter").value;
+      const query = document.getElementById("glossary-search").value.toLowerCase().trim();
+      const tbody = document.getElementById("glossary-tbody");
+      tbody.innerHTML = "";
+
+      const list = VOCAB_BANK.filter(item => {
+        const matchMod = filter === "ALL" || item.mod === filter;
+        const matchText = !query || item.word.toLowerCase().includes(query) || item.zh.includes(query) || item.def.toLowerCase().includes(query);
+        return matchMod && matchText;
+      });
+
+      list.forEach(item => {
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+          <td style="color:#94a3b8; font-size:0.72rem;">${item.sub.split(":")[0]}</td>
+          <td style="color:#38bdf8; font-weight:800;">${item.word}</td>
+          <td><strong style="color:#fef08a;">${item.zh}</strong><br><span style="color:#cbd5e1; font-size:0.75rem;">${item.def}</span></td>
+          <td><button class="btn btn-secondary" style="padding:4px 8px; font-size:0.75rem;" onclick="speak('${item.word.replace(/'/g, "\\'")}')">🔊</button></td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    function closeModal(id) {
+      document.getElementById(id).classList.add("hidden");
+    }
+  </script>
+</body>
+</html>
